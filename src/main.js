@@ -2,6 +2,11 @@ import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import './plugins/element.js'
+import './assets/css/global.css'
+import axios from 'axios'
+
+axios.defaults.baseURL = 'http://127.0.0.1:51002'
+Vue.prototype.$http = axios
 
 Vue.config.productionTip = false
 
