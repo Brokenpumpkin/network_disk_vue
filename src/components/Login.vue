@@ -3,7 +3,7 @@
         <div class="login_box">
             <!--图标区域-->
             <div class="logo_box">
-                <img src="../assets/logo.png">
+                <img src="../assets/storm.png">
             </div>
             <!--登陆表单区域-->
             <el-form ref="loginFormRef" :model="loginForm" :rules="loginFormRules" label-width="80px" class="login_from">
@@ -18,7 +18,7 @@
                 <!--按钮区域-->
                 <el-form-item class="btns">
                     <el-button type="primary" @click="login">登录</el-button>
-                    <el-button type="info">注册</el-button>
+                    <el-button type="info" @click="register">注册</el-button>
                 </el-form-item>
             </el-form>
         </div>
@@ -56,8 +56,13 @@ export default {
                 if (res.code !== 200) return this.$message.error('登录失败')
                 this.$message.success('登录成功');
                 window.sessionStorage.setItem('token', res.data.token_type + " " + res.data.access_token);
+                window.sessionStorage.setItem('username', this.loginForm.username);
+                window.sessionStorage.setItem('path', "/" + this.loginForm.username);
                 this.$router.push('/home');
             });
+        },
+        register () {
+            this.$router.push('/register');
         }
     }
 } 
