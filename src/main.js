@@ -7,6 +7,7 @@ import 'element-ui/lib/theme-chalk/index.css';
 import './assets/css/global.css'
 import axios from 'axios'
 import store from './store'
+import { saveAs } from 'file-saver';
 
 axios.defaults.baseURL = 'http://127.0.0.1:51002'
 Vue.prototype.$http = axios
@@ -23,5 +24,6 @@ Vue.use(ElementUI);
 new Vue({
   store,
   router,
+  saveAs,
   render: h => h(App)
 }).$mount('#app')

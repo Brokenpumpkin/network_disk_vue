@@ -38,16 +38,16 @@
                                 
             <el-table-column>
                 <template slot-scope="scope">
-                    <i class="el-icon-share" @click="share"></i>
-                    <i class="el-icon-download" @click="download"></i>
-                    <el-dropdown>
+                    <i class="el-icon-share" v-if="scope.row.isDir === 0" @click="share(scope.row.userFileName)"></i>
+                    <i class="el-icon-download" v-if="scope.row.isDir === 0" @click="download(scope.row.userFileName)"></i>
+                    <el-dropdown trigger="click">
                         <span class="el-dropdown-link">
                             <i class="el-icon-more"></i>
                         </span>
                         <el-dropdown-menu slot="dropdown">
-                            <el-dropdown-item>移动到</el-dropdown-item>
-                            <el-dropdown-item @click.native="ranameBtn">重命名</el-dropdown-item>
-                            <el-dropdown-item>删除</el-dropdown-item>
+                            <el-dropdown-item @click.native="fileMoveBtn(scope.row.userFileName)">移动到</el-dropdown-item>
+                            <el-dropdown-item @click.native="ranameBtn(scope.row.userFileName)">重命名</el-dropdown-item>
+                            <el-dropdown-item @click.native="fileDelete">删除</el-dropdown-item>
                         </el-dropdown-menu>
                     </el-dropdown>
                 </template>                   
@@ -56,7 +56,7 @@
             <el-table-column
                 prop="fileSize"
                 label="大小"
-                sortable="custom"
+                sortable
                 min-width="20%">
                 <template slot-scope="scope">
                     <div v-if="scope.row.isDir === 1"><span>--</span></div>
@@ -67,7 +67,7 @@
             <el-table-column
                     prop="updateTime"
                     label="修改时间"
-                    sortable="custom"
+                    sortable
                     min-width="35%">
                 <template slot="header">
                     <i class="el-icon-date"></i>
@@ -109,6 +109,25 @@
                 <el-button type="primary" @click="rename">确 定</el-button>
             </span>
       </el-dialog>
+
+      <el-dialog
+            title="移动到"
+            :visible.sync="$store.state.fileMoveDialogVisible"
+            width="30%">
+            <el-tree
+                icon-class="el-icon-plus"
+                :data="data"
+                :props="dirProps"
+                accordion
+                @node-click="handleNodeClick"
+                check-on-click-node="true">
+            </el-tree>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="$store.commit('fileMoveDialogVisibleToFalse')">取 消</el-button>
+                <el-button type="primary" @click="fileMove">确 定</el-button>
+            </span>
+      </el-dialog>
+
   </div>
 </template>
 
@@ -123,6 +142,7 @@ export default {
     },
     data() {
         return {
+            oldName: '',
             // 是否首次初始化完成
             initLoading: true,
             // 是否初始化加载完成
@@ -146,6 +166,45 @@ export default {
                     {min: 1, max: 25, message: '新的名称长度在1到25个字符之间', trigger: 'blur'}
                 ]
             },
+            data: [{
+                label: '一级 1',
+                children: [{
+                    label: '二级 1-1',
+                    children: [{
+                    label: '三级 1-1-1'
+                    }]
+                }]
+                }, {
+                label: '一级 2',
+                children: [{
+                    label: '二级 2-1',
+                    children: [{
+                    label: '三级 2-1-1'
+                    }]
+                }, {
+                    label: '二级 2-2',
+                    children: [{
+                    label: '三级 2-2-1'
+                    }]
+                }]
+                }, {
+                label: '一级 3',
+                children: [{
+                    label: '二级 3-1',
+                    children: [{
+                    label: '三级 3-1-1'
+                    }]
+                }, {
+                    label: '二级 3-2',
+                    children: [{
+                    label: '三级 3-2-1'
+                    }]
+                }]
+            }],
+            dirProps: {
+                children: 'children',
+                label: 'label'
+            },
             fileList: [],
             // updateFileList: [],
             levelList: []
@@ -162,7 +221,6 @@ export default {
         // ...mapMutations(['updateFileList']),
         async getUserFileList() {
             const path = window.sessionStorage.getItem("path");
-            console.log(path);
             const {data: res} = await this.$http.get('cloud-file-service/file/gerUserFileList', {
                 params: {
                     path: path
@@ -176,11 +234,20 @@ export default {
             this.fileList = newFileList;
             this.initLoading = false;
         },
-        download() {
-            console.log(this.updateFileLlist);
-        },
-        share() {
-
+        download(downloadFileName) {
+            const nowPath = window.sessionStorage.getItem("path");
+            const test = {
+                //get访问下载接口
+                getDownLoad: (params) => this.$http.get("cloud-file-service/download/fileDownload", {params: params, responseType: "blob"})
+            };
+            const params = {
+                fileName: downloadFileName,
+                path: nowPath
+            };
+            // res.data.type || 
+            test.getDownLoad(params).then((res) => {
+                saveAs(new Blob([res.data], {type:"application/octet-stream"}), downloadFileName);
+            });
         },
         async intoDir(fileName) {
             const path = window.sessionStorage.getItem("path");
@@ -247,11 +314,40 @@ export default {
             this.$refs.renameRef.resetFields();
         },
         rename() {
-
-            this.$store.commit('addDirDialogVisibleToFalse');
+            const path = window.sessionStorage.getItem('path');
+            this.$refs.renameRef.validate(async valid => {
+                if (!valid) return;
+                const {data: res} =  await this.$http.post('cloud-file-service/file/fileRename', {
+                    oldName: this.oldName,
+                    newName: this.renameForm.newName,
+                    path: path               
+                });
+                if (res.code !== 200) this.$message.error(res.message);
+                this.$message.success(res.message);
+                this.$store.commit('renameDialogVisibleToFalse');
+                this.getUserFileList();
+            })
         },
-        ranameBtn() {
+        handleNodeClick(data) {
+            console.log(data);
+        },
+        ranameBtn(oldFileName) {
+            this.oldName = oldFileName;
             this.$store.commit('renameDialogVisibleToTrue');
+        },
+        fileMove() {
+
+            this.$store.commit('fileMoveDialogVisibleToFalse')
+        },
+        fileMoveBtn(fileName) {
+
+            this.$store.commit('fileMoveDialogVisibleToTrue');
+        },
+        fileDelete() {
+
+        },
+        share() {
+            const nowPath = window.sessionStorage.getItem("path");
         }
     }
 }

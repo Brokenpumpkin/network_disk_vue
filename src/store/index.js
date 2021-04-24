@@ -8,6 +8,7 @@ const store = new Vuex.Store({
       //控制新建文件夹对话框的显示
       addDirDialogVisible: false,
       renameDialogVisible: false,
+      fileMoveDialogVisible: false,
       count: 0,
       fileLlist: []
     },
@@ -23,6 +24,12 @@ const store = new Vuex.Store({
       },
       renameDialogVisibleToFalse (state) {
         state.renameDialogVisible = false
+      },
+      fileMoveDialogVisibleToTrue (state) {
+        state.fileMoveDialogVisible = true
+      },
+      fileMoveDialogVisibleToFalse (state) {
+        state.fileMoveDialogVisible = false
       },
       increment (state) {
         state.count++

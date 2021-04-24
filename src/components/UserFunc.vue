@@ -51,6 +51,7 @@ export default {
     methods: {
         beforeUpload(file) {
             this.path = window.sessionStorage.getItem('path');
+            console.log(this.path);
         },
         handleProgress(file) {
             console.log(file);
@@ -62,18 +63,10 @@ export default {
         },
         async uploadSuccess() {
             this.getUserFileList();
-            this.store.commit('increment');
+            this.$store.commit('increment');
         },
         addDir() {
             this.$store.commit('addDirDialogVisibleToTrue');
-        },
-        async search() {
-            const {data: res} = await this.$http.get('cloud-file-service/file/search', {
-                params: {
-                    path: this.searchInput
-                }
-            });
-
         },
         async getUserFileList() {
             const path = window.sessionStorage.getItem("path");
@@ -88,6 +81,14 @@ export default {
             var newFileListStr = JSON.stringify(newFileList);
             window.sessionStorage.setItem("fileList", newFileListStr);
             this.fileLlist = newFileList;
+        },
+        async search() {
+            const {data: res} = await this.$http.get('cloud-file-service/file/search', {
+                params: {
+                    path: this.searchInput
+                }
+            });
+
         }
     }
 }
