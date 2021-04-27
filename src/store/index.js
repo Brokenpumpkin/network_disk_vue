@@ -9,6 +9,8 @@ const store = new Vuex.Store({
       addDirDialogVisible: false,
       renameDialogVisible: false,
       fileMoveDialogVisible: false,
+      shareFileName: '',
+      sharePath: '',
       count: 0,
       fileLlist: []
     },
@@ -30,6 +32,12 @@ const store = new Vuex.Store({
       },
       fileMoveDialogVisibleToFalse (state) {
         state.fileMoveDialogVisible = false
+      },
+      setShareFileName(state, fileName) {
+        state.shareFileName = fileName
+      },
+      setSharePath(state, sharePath) {
+        state.sharePath = sharePath
       },
       increment (state) {
         state.count++

@@ -7,10 +7,13 @@ import 'element-ui/lib/theme-chalk/index.css';
 import './assets/css/global.css'
 import axios from 'axios'
 import store from './store'
-import { saveAs } from 'file-saver';
+import saveAs from 'file-saver';
+import clipboard from 'clipboard';
 
-axios.defaults.baseURL = 'http://127.0.0.1:51002'
+
+Vue.prototype.clipboard = clipboard;
 Vue.prototype.$http = axios
+axios.defaults.baseURL = 'http://127.0.0.1:51002'
 axios.interceptors.request.use(config => {
   console.log(config)
   config.headers.Authorization = window.sessionStorage.getItem('token')

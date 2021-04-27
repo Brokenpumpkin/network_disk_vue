@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import Login from '../components/Login.vue'
 import Home from '../components/Home.vue'
 import Register from '../components/Register.vue'
+import ShareFileSecret from '../components/ShareFileSecret.vue'
 
 // const Login = () => import(/* webpackChunkName: "Login_Home_Welcome" */ '../components/Login.vue')
 // const Home = () => import(/* webpackChunkName: "Login_Home_Welcome" */ '../components/Home.vue')
@@ -14,7 +15,9 @@ const routes = [
   {path: '/', redirect: '/login'},
   {path: '/login', component: Login},
   {path: '/home', component: Home},
-  {path: '/register', component: Register}
+  {path: '/register', component: Register},
+  // 动态路径参数 以冒号开头
+  { path: '/shareFileSecret/:link', component: ShareFileSecret }
 ]
 
 const router = new VueRouter({

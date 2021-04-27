@@ -1,5 +1,42 @@
 <template>
   <div>
+      <el-card class="box-card">
+            <el-row :gutter="25">
+                <el-col :span="5">
+                    <div>
+                        <el-upload
+                            class="upload-demo"
+                            action="http://127.0.0.1:51002/cloud-file-service/upload/fileUpload"
+                            :headers="myHeaders"
+                            :data="{path: path}"
+                            :limit="1"
+                            :show-file-list="false"
+                            :before-upload="beforeUpload"
+                            :on-progress="handleProgress"
+                            :on-error="uploadError"
+                            :on-success="uploadSuccess">
+                            <el-button type="primary" icon="el-icon-upload2">点击上传</el-button>
+                        </el-upload>
+                    </div>
+                </el-col>
+
+                <el-col :span="6">                           
+                    <el-button class="btns" icon="el-icon-folder-add" @click="addDirBtn">新建文件夹</el-button> 
+                </el-col>
+
+                <el-col :span="12">
+                    <div>
+                        <el-input class="input-with-select"
+                            placeholder="搜索您的文件"
+                            v-model="searchInput"
+                            clearable
+                            @clear="getUserFileList">
+                            <el-button icon="el-icon-search" slot="append" @click="search"></el-button>
+                        </el-input>   
+                    </div>
+                </el-col>
+            </el-row>
+      </el-card>
       <el-breadcrumb separator-class="el-icon-arrow-right">
         <el-breadcrumb-item v-for="(item, index) in levelList" :key="index" @click.native="updateBreadcrumb(index)">
             {{item}}
@@ -31,14 +68,14 @@
                 min-width="100%"
                 sortable="custom">
                 <template slot-scope="scope">
-                    <div v-if="scope.row.isDir === 1" @click="intoDir(scope.row.userFileName)">{{scope.row.userFileName}}</div>
-                    <div v-else>{{scope.row.userFileName}}</div>
+                    <div class="user-file-name" v-if="scope.row.isDir === 1" @click="intoDir(scope.row.userFileName)">{{scope.row.userFileName}}</div>
+                    <div class="user-file-name" v-else>{{scope.row.userFileName}}</div>
                 </template>
             </el-table-column>
                                 
             <el-table-column>
                 <template slot-scope="scope">
-                    <i class="el-icon-share" v-if="scope.row.isDir === 0" @click="share(scope.row.userFileName)"></i>
+                    <i class="el-icon-share" v-if="scope.row.isDir === 0" @click="shareBtn(scope.row.userFileName)"></i>
                     <i class="el-icon-download" v-if="scope.row.isDir === 0" @click="download(scope.row.userFileName)"></i>
                     <el-dropdown trigger="click">
                         <span class="el-dropdown-link">
@@ -47,7 +84,7 @@
                         <el-dropdown-menu slot="dropdown">
                             <el-dropdown-item @click.native="fileMoveBtn(scope.row.userFileName)">移动到</el-dropdown-item>
                             <el-dropdown-item @click.native="ranameBtn(scope.row.userFileName)">重命名</el-dropdown-item>
-                            <el-dropdown-item @click.native="fileDelete">删除</el-dropdown-item>
+                            <el-dropdown-item @click.native="fileDelete(scope.row.userFileName)">删除</el-dropdown-item>
                         </el-dropdown-menu>
                     </el-dropdown>
                 </template>                   
@@ -59,8 +96,8 @@
                 sortable
                 min-width="20%">
                 <template slot-scope="scope">
-                    <div v-if="scope.row.isDir === 1"><span>--</span></div>
-                    <div v-else><span>{{scope.row.fileSize}}</span></div>
+                    <div class="file-size" v-if="scope.row.isDir === 1"><span>--</span></div>
+                    <div class="file-size" v-else><span>{{scope.row.fileSize}}</span></div>
                 </template>
             </el-table-column>
 
@@ -113,14 +150,21 @@
       <el-dialog
             title="移动到"
             :visible.sync="$store.state.fileMoveDialogVisible"
-            width="30%">
+            width="40%">
             <el-tree
+                lazy
+                highlight-current
                 icon-class="el-icon-plus"
-                :data="data"
+                ref="tree"
+                node-key="id"
+                empty-text="暂无数据"
+                :load="loadNode"
                 :props="dirProps"
-                accordion
+                :show-checkbox="true"
+                :check-strictly="true"
                 @node-click="handleNodeClick"
-                check-on-click-node="true">
+                @check-change="checkChange"
+                :render-content="renderContent">
             </el-tree>
             <span slot="footer" class="dialog-footer">
                 <el-button @click="$store.commit('fileMoveDialogVisibleToFalse')">取 消</el-button>
@@ -128,25 +172,86 @@
             </span>
       </el-dialog>
 
+      <el-dialog
+            title="分享文件（夹）"
+            :visible.sync="shareDialogVisible"
+            width="30%">
+            <span>有效期：</span>
+            <el-select v-model="value" placeholder="请选择">
+                    <el-option
+                        v-for="item in options"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value">
+                    </el-option>
+            </el-select>
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="shareDialogVisible=false">取 消</el-button>
+                <el-button type="primary" @click="creatShareLink">创建链接</el-button>
+            </span>
+      </el-dialog>
+
+      <el-dialog
+            title="分享文件（夹）"
+            :visible.sync="shareLinkDialogVisible"
+            width="50%">
+            <p>分享链接：</p>
+            <a @click="goToShare">{{this.shareFileUrl + this.shareLink}}</a>
+            <el-divider></el-divider>
+            <p>提取码：</p>
+            <a>{{this.shareSercet}}</a>
+
+            <span slot="footer" class="dialog-footer">
+                <el-button @click="shareLinkDialogVisible=false">取 消</el-button>
+                <el-button 
+                class="btn"
+                :data-clipboard-text="'分享链接：' + this.shareFileUrl + this.shareLink + ' 提取码：'  + this.shareSercet">
+                    一键复制链接及提取码
+                </el-button>
+            </span>
+      </el-dialog>
+
   </div>
 </template>
 
 <script>
-import { mapMutations } from 'vuex'
+import ClipboardJS from 'clipboard';
+var clipboard = new ClipboardJS('.btn');
 
 export default {
     created() {
         this.getBreadcrumb();
         this.getUserFileList();
-        this.$forceUpdate();
     },
     data() {
         return {
+            shareFileUrl: 'http://127.0.0.1:8080/#/shareFileSecret/',
+            //分享链接
+            shareLink: '',
+            //提取码
+            shareSercet: '',
             oldName: '',
+            moveFileName: '',
+            shareFileName: '',
+            //点击分享显示的对话框
+            shareDialogVisible: false,
+            //在分享对话框中点击创建链接后显示的对话框
+            shareLinkDialogVisible: false,
             // 是否首次初始化完成
             initLoading: true,
             // 是否初始化加载完成
             loading: false,
+            //搜索框的输入
+            searchInput: '',
+            //上传的后端地址
+            uploadUrl: 'http://127.0.0.1:51002' + '/cloud-file-service/upload/fileUpload',
+            //上传的文件夹路径
+            path: '',
+            uploadParams: {
+                path: ''
+            },
+            //token
+            myHeaders: {Authorization: window.sessionStorage.getItem('token')},
             //添加文件夹表单
             addDirForm: {
                 dirName: ''
@@ -166,59 +271,32 @@ export default {
                     {min: 1, max: 25, message: '新的名称长度在1到25个字符之间', trigger: 'blur'}
                 ]
             },
-            data: [{
-                label: '一级 1',
-                children: [{
-                    label: '二级 1-1',
-                    children: [{
-                    label: '三级 1-1-1'
-                    }]
-                }]
-                }, {
-                label: '一级 2',
-                children: [{
-                    label: '二级 2-1',
-                    children: [{
-                    label: '三级 2-1-1'
-                    }]
-                }, {
-                    label: '二级 2-2',
-                    children: [{
-                    label: '三级 2-2-1'
-                    }]
-                }]
-                }, {
-                label: '一级 3',
-                children: [{
-                    label: '二级 3-1',
-                    children: [{
-                    label: '三级 3-1-1'
-                    }]
-                }, {
-                    label: '二级 3-2',
-                    children: [{
-                    label: '三级 3-2-1'
-                    }]
-                }]
+            options: [{
+                value: '1',
+                label: '1天'
+            }, {
+                value: '7',
+                label: '7天'
+            }, {
+                value: '永久有效',
+                label: '永久有效'
             }],
+            //分享链接过期具体值
+            value: '',
+            editCheckId: '',
             dirProps: {
-                children: 'children',
-                label: 'label'
+                children: [],
+                label: 'name',
+                isLeaf: "leaf"
             },
             fileList: [],
-            // updateFileList: [],
             levelList: []
         }
     },
     computed: {
-        updateFileList() {
-            const newfileList = window.sessionStorage.getItem("fileList");
-            var newFileListStr = JSON.stringify(newfileList);
-            return newFileListStr;
-        }
+        
     },
     methods: {
-        // ...mapMutations(['updateFileList']),
         async getUserFileList() {
             const path = window.sessionStorage.getItem("path");
             const {data: res} = await this.$http.get('cloud-file-service/file/gerUserFileList', {
@@ -244,16 +322,14 @@ export default {
                 fileName: downloadFileName,
                 path: nowPath
             };
-            // res.data.type || 
             test.getDownLoad(params).then((res) => {
-                saveAs(new Blob([res.data], {type:"application/octet-stream"}), downloadFileName);
-            });
+                saveAs(new Blob([res.data], {type:res.header.type}), downloadFileName);
+            }); 
         },
         async intoDir(fileName) {
             const path = window.sessionStorage.getItem("path");
             const newPath = path + "/" + fileName;
             window.sessionStorage.setItem("path", newPath);
-            console.log(newPath);
             const {data: res} = await this.$http.get('cloud-file-service/file/gerUserFileList', {
                 params: {
                     path: newPath
@@ -266,6 +342,7 @@ export default {
             window.sessionStorage.setItem("fileList", newFileListStr);
             this.fileList = newFileList;
             this.levelList = newPath.substr(1).split("/");
+            this.path = newPath;
         },
         getBreadcrumb() {
             const path = window.sessionStorage.getItem("path");
@@ -297,6 +374,7 @@ export default {
             this.$refs.addDirRef.resetFields();
         },
         addDir() {
+            console.log(this.addDirForm.dirName);
             const path = window.sessionStorage.getItem('path');
             this.$refs.addDirRef.validate(async valid => {
                 if (!valid) return;
@@ -328,33 +406,175 @@ export default {
                 this.getUserFileList();
             })
         },
-        handleNodeClick(data) {
-            console.log(data);
+        async fileDelete(delFileName) {
+            const nowPath = window.sessionStorage.getItem("path");
+            const {data: res} = await this.$http.get('cloud-file-service/file/fileDelete', {
+                params: {
+                    fileName: delFileName,
+                    path: nowPath
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            this.$message.success(res.message);
+            this.getUserFileList();
+        },
+        async beforeUpload(file) {
+            this.path = window.sessionStorage.getItem('path');
+            console.log(this.path);
+        },
+        handleProgress(file) {
+            console.log(file);
+        },
+        uploadError(response, file, fileList) {
+            console.log("上传文件失败，response:" +response);
+            console.log("上传文件失败，file:" +file);
+            console.log("上传文件失败，fileList:" +fileList);
+        },
+        async uploadSuccess() {
+            this.getUserFileList();
+            this.$store.commit('increment');
+        },
+        addDirBtn() {
+            this.$store.commit('addDirDialogVisibleToTrue');
         },
         ranameBtn(oldFileName) {
             this.oldName = oldFileName;
             this.$store.commit('renameDialogVisibleToTrue');
         },
-        fileMove() {
-
-            this.$store.commit('fileMoveDialogVisibleToFalse')
+        async fileMove() {
+            var path = window.sessionStorage.getItem('path');
+            var node = this.$refs.tree.getCheckedNodes()[0];
+            const {data: res} = await this.$http.post('cloud-file-service/file/fileMove',{
+                fileName: this.moveFileName,
+                oldPath: path,
+                newPath: node.path + "/" + node.name
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            this.$message.success(res.message);
+            this.$store.commit('fileMoveDialogVisibleToFalse');
+            this.getUserFileList();
         },
-        fileMoveBtn(fileName) {
-
+        async fileMoveBtn(fileName) {
+            this.moveFileName = fileName;
             this.$store.commit('fileMoveDialogVisibleToTrue');
         },
-        fileDelete() {
-
+        loadNode(node, resolve) {
+            // 一级节点处理 
+            if (node.level == 0) { 
+                this.requestTree(resolve);
+            }
+            // 其余节点处理
+            if (node.level >= 1) { 
+                this.getIndex(node, resolve);
+            }
         },
-        share() {
+        async requestTree(resolve) {
+            const {data: res} = await this.$http.get('cloud-file-service/file/getUserDirList',{
+                params: {
+                    path: window.sessionStorage.getItem('username')
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            var datas = res.data;
+            datas.forEach(value => {
+                value.leaf = false
+            })
+            resolve(datas);
+        },
+        async getIndex(node, resolve) {
+            console.log(node.data.name);
+            console.log(node.data.path);
+            const {data: res} = await this.$http.get('cloud-file-service/file/getUserDirList',{
+                params: {
+                    path: node.data.path + "/" + node.data.name
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            var datas = res.data;
+            datas.forEach(value => {
+                value.leaf = false
+            })
+            resolve(datas);   
+        },
+        renderContent: function (h, {
+            node,
+            data,
+            store
+        }) {
+            return ( <span> <i class = 'el-icon-folder-opened' style = "color: #FFB427;"></i>
+            <span title={node.data.name} class = 'style-demo'>{node.data.name}</span > </span>);
+        },
+        handleNodeClick(item,node,self) {
+            this.editCheckId=item.id;
+            this.$refs.tree.setCheckedKeys([item.id]);
+        },
+        // tree单选
+        checkChange (item,node,self) {
+            if (node == true) {
+               this.editCheckId=item.id;
+               this.$refs.tree.setCheckedKeys([item.id])
+            }else {
+               if (this.editCheckId == item.id) {
+                   this.$refs.tree.setCheckedKeys([item.id])
+               }
+            }
+        },
+        async creatShareLink() {
             const nowPath = window.sessionStorage.getItem("path");
+            // 向后端发起获取分享链接和提取码的请求 
+            const {data: res} = await this.$http.get('cloud-file-service/share/getShareLink', {
+                params: {
+                    expireDay: this.value,
+                    fileName: this.shareFileName,
+                    path: window.sessionStorage.getItem('path')
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            var linkAndCode = res.data.split("#");
+            this.shareLink = linkAndCode[0];
+            this.shareSercet = linkAndCode[1];
+            this.shareLinkDialogVisible = true;
+            this.shareDialogVisible = false;
+        },
+        shareBtn(shareFileName) {
+            this.shareFileName = shareFileName;
+            this.$store.commit('setShareFileName', shareFileName);
+            this.$store.commit('setSharePath', window.sessionStorage.getItem('path'));
+            this.shareDialogVisible = true;
+        },
+        copyToBoard() {
+            
+        },
+        goToShare() {
+            this.$router.push('/shareFileSecret/' + this.shareLink);
+        },
+        async search() {
+            const {data: res} = await this.$http.get('cloud-file-service/file/search', {
+                params: {
+                    keyword: this.searchInput
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            this.$message.success(res.message);
+            const newFileList = res.data;
+            var newFileListStr = JSON.stringify(newFileList);
+            window.sessionStorage.setItem("fileList", newFileListStr);
+            this.fileList = newFileList;
         }
     }
 }
 </script>
 
 <style lang='less' scoped>
-
+.btns {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+.box-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; 
+}
 .el-dropdown-link {
     cursor: pointer;
     padding: 10px;
@@ -377,5 +597,11 @@ export default {
 .el-breadcrumb-item {
     font-weight: bold;
     cursor: pointer;
+}
+.user-file-name {
+    cursor: default;
+}
+.file-size {
+    cursor: default;
 }
 </style>

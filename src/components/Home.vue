@@ -8,7 +8,7 @@
         <el-container>
             <!--右侧内容主题-->
             <el-main>
-                <UserFunc/>
+                <!-- <UserFunc/> -->
                 <!--文件区-->
                 <el-row>
                     <el-col :offset="0" :xs="24" :sm="24" :lg="24">

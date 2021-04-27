@@ -37,8 +37,6 @@
 </template>
 
 <script>
-var token = window.sessionStorage.getItem('token');
-
 export default {
     data() {
         return {
