@@ -9,7 +9,6 @@
                             action="http://127.0.0.1:51002/cloud-file-service/upload/fileUpload"
                             :headers="myHeaders"
                             :data="{path: path}"
-                            :limit="1"
                             :show-file-list="false"
                             :before-upload="beforeUpload"
                             :on-progress="handleProgress"
@@ -196,7 +195,7 @@
             :visible.sync="shareLinkDialogVisible"
             width="50%">
             <p>分享链接：</p>
-            <a @click="goToShare">{{this.shareFileUrl + this.shareLink}}</a>
+            <a @click="goToShare">{{this.shareFileUrl + "?link=" + this.shareLink}}</a>
             <el-divider></el-divider>
             <p>提取码：</p>
             <a>{{this.shareSercet}}</a>
@@ -323,7 +322,7 @@ export default {
                 path: nowPath
             };
             test.getDownLoad(params).then((res) => {
-                saveAs(new Blob([res.data], {type:res.header.type}), downloadFileName);
+                saveAs(new Blob([res.data], {type:res.headers.type}), downloadFileName);
             }); 
         },
         async intoDir(fileName) {
@@ -530,9 +529,9 @@ export default {
                 }
             });
             if (res.code !== 200) this.$message.error(res.message);
-            var linkAndCode = res.data.split("#");
-            this.shareLink = linkAndCode[0];
-            this.shareSercet = linkAndCode[1];
+            var shareLinkVo = res.data;
+            this.shareLink = shareLinkVo.secretLink;
+            this.shareSercet = shareLinkVo.secret;
             this.shareLinkDialogVisible = true;
             this.shareDialogVisible = false;
         },
@@ -546,7 +545,9 @@ export default {
             
         },
         goToShare() {
-            this.$router.push('/shareFileSecret/' + this.shareLink);
+            this.$router.push({path:'/shareFileSecret', query:{
+                link:this.shareLink}
+            } );
         },
         async search() {
             const {data: res} = await this.$http.get('cloud-file-service/file/search', {

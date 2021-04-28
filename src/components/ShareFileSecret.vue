@@ -26,11 +26,11 @@
                     width="30%">
 
                     <i class="el-icon-document"></i>
-                    <span>文件名</span>
+                    <h2>{{this.shareFileName}}</h2>
 
                     <span slot="footer" class="dialog-footer">
                         <el-button type="primary" @click="download">下载</el-button>
-                        <el-button type="primary" @click="save">保存到网盘</el-button>
+                        <el-button type="primary" @click="saveBtn">保存到网盘</el-button>
                         <el-button @click="downloadShareFileDialogVisible=false">取 消</el-button>
                     </span>
                 </el-dialog>
@@ -45,6 +45,31 @@
                         <el-button type="primary" @click="toHome">返回主页</el-button>
                     </span>
                 </el-dialog>
+
+                <el-dialog
+                    title="保存到"
+                    :visible.sync="fileSaveDialogVisible"
+                    width="40%">
+                    <el-tree
+                        lazy
+                        highlight-current
+                        icon-class="el-icon-plus"
+                        ref="tree"
+                        node-key="id"
+                        empty-text="暂无数据"
+                        :load="loadNode"
+                        :props="dirProps"
+                        :show-checkbox="true"
+                        :check-strictly="true"
+                        @node-click="handleNodeClick"
+                        @check-change="checkChange"
+                        :render-content="renderContent">
+                    </el-tree>
+                    <span slot="footer" class="dialog-footer">
+                        <el-button @click="fileSaveDialogVisible = false">取 消</el-button>
+                        <el-button type="primary" @click="fileSaveTo">确 定</el-button>
+                    </span>
+            </el-dialog>
             </el-main>
         </el-container>
     </el-container>
@@ -60,6 +85,13 @@ export default {
         return {
             downloadShareFileDialogVisible: false,
             errorDialogVisible: false,
+            fileSaveDialogVisible: false,
+            shareFileName: '',
+            dirProps: {
+                children: [],
+                label: 'name',
+                isLeaf: "leaf"
+            },
             shareForm: {
                 linkSecret: ''             
             }
@@ -72,21 +104,18 @@ export default {
         async checkShareLink() {
             //验证分享链接是否过期或合法
             const {data: res} = await this.$http.post('cloud-file-service/share/checkShareLink',{
-                fileName: this.$store.shareFileName,
-                path: this.$store.sharePath,
-                link: this.$route.params.link
+                link: this.$route.query.link
             });
             if (res.code !== 200) {
                 this.$message.error(res.message);
                 this.errorDialogVisible = true;
             }
-            this.$message.success(res.message);
+            this.shareFileName = res.data.fileName;
         },
         async checkSecret() {
             //验证提取码是否正确
             const {data: res} = await this.$http.post('cloud-file-service/share/checkSecret',{
-                fileName: this.$store.shareFileName,
-                path: this.$store.sharePath,
+                link: this.$route.query.link,
                 secret: this.shareForm.linkSecret
             });
             if (res.code !== 200) this.$message.error(res.message);
@@ -94,25 +123,101 @@ export default {
             this.downloadShareFileDialogVisible = true;
         },
         toHome() {
-            errorDialogVisible = false;
+            this.errorDialogVisible = false;
             this.$router.push('/home');
         },
         download() {
-            var downloadFileName = this.$store.shareFileName;
             const test = {
                 //get访问下载接口
-                getDownLoad: (params) => this.$http.get("cloud-file-service/download/fileDownload", {params: params, responseType: "blob"})
+                getDownLoad: (params) => this.$http.get("cloud-file-service/share/shareDownload", {params: params, responseType: "blob"})
             };
             const params = {
-                fileName: downloadFileName,
-                path: this.$store.sharePath
+                link: this.$route.query.link
             };
             test.getDownLoad(params).then((res) => {
-                saveAs(new Blob([res.data], {type:res.header.type}), downloadFileName);
+                console.log(res);
+                console.log(res.headers);
+                console.log(res.headers.filename);
+                var filename = res.headers.filename;
+                saveAs(new Blob([res.data], {type:res.data.type}), res.headers.filename);
             });
         },
-        save() {
+        saveBtn() {
+            this.fileSaveDialogVisible = true;           
+        },
+        async fileSaveTo() {
+            var node = this.$refs.tree.getCheckedNodes()[0];
             //发起添加到我的网盘请求
+            const {data: res} = await this.$http.get('cloud-file-service/share/saveToDisk', {
+                params: {
+                    link: this.$route.params.link,
+                    path: node.path + "/" + node.name
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            this.$message.success(res.message);
+            this.fileSaveDialogVisible = false; 
+        },
+        loadNode(node, resolve) {
+            // 一级节点处理 
+            if (node.level == 0) { 
+                this.requestTree(resolve);
+            }
+            // 其余节点处理
+            if (node.level >= 1) { 
+                this.getIndex(node, resolve);
+            }
+        },
+        async requestTree(resolve) {
+            const {data: res} = await this.$http.get('cloud-file-service/file/getUserDirList',{
+                params: {
+                    path: window.sessionStorage.getItem('username')
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            var datas = res.data;
+            datas.forEach(value => {
+                value.leaf = false
+            })
+            resolve(datas);
+        },
+        async getIndex(node, resolve) {
+            console.log(node.data.name);
+            console.log(node.data.path);
+            const {data: res} = await this.$http.get('cloud-file-service/file/getUserDirList',{
+                params: {
+                    path: node.data.path + "/" + node.data.name
+                }
+            });
+            if (res.code !== 200) this.$message.error(res.message);
+            var datas = res.data;
+            datas.forEach(value => {
+                value.leaf = false
+            })
+            resolve(datas);   
+        },
+        renderContent: function (h, {
+            node,
+            data,
+            store
+        }) {
+            return ( <span> <i class = 'el-icon-folder-opened' style = "color: #FFB427;"></i>
+            <span title={node.data.name} class = 'style-demo'>{node.data.name}</span > </span>);
+        },
+        handleNodeClick(item,node,self) {
+            this.editCheckId=item.id;
+            this.$refs.tree.setCheckedKeys([item.id]);
+        },
+        // tree单选
+        checkChange (item,node,self) {
+            if (node == true) {
+               this.editCheckId=item.id;
+               this.$refs.tree.setCheckedKeys([item.id])
+            }else {
+               if (this.editCheckId == item.id) {
+                   this.$refs.tree.setCheckedKeys([item.id])
+               }
+            }
         }
     }
 }
@@ -155,5 +260,10 @@ body {
 .title {
     display: flex;
     justify-content: center;
+}
+.el-icon-document {
+    display: flex;
+    justify-content: center;
+    font-size: 40px;
 }
 </style>
