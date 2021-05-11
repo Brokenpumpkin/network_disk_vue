@@ -128,8 +128,8 @@ export default {
         },
         download() {
             const test = {
-                //get访问下载接口
-                getDownLoad: (params) => this.$http.get("cloud-file-service/share/shareDownload", {params: params, responseType: "blob"})
+                getDownLoad: (params) => this.$http.get("cloud-file-service/share/shareDownload"
+                , {params: params, responseType: "blob"})
             };
             const params = {
                 link: this.$route.query.link

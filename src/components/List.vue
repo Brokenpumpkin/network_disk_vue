@@ -314,8 +314,8 @@ export default {
         download(downloadFileName) {
             const nowPath = window.sessionStorage.getItem("path");
             const test = {
-                //get访问下载接口
-                getDownLoad: (params) => this.$http.get("cloud-file-service/download/fileDownload", {params: params, responseType: "blob"})
+                getDownLoad: (params) => this.$http.get("cloud-file-service/download/fileDownload"
+                , {params: params, responseType: "blob"})
             };
             const params = {
                 fileName: downloadFileName,
