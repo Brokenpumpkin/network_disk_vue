@@ -9,7 +9,7 @@ import axios from 'axios'
 import store from './store'
 import saveAs from 'file-saver';
 import clipboard from 'clipboard';
-
+import uploader from 'vue-simple-uploader';
 
 Vue.prototype.clipboard = clipboard;
 Vue.prototype.$http = axios
@@ -23,6 +23,7 @@ axios.interceptors.request.use(config => {
 Vue.config.productionTip = false
 
 Vue.use(ElementUI);
+Vue.use(uploader);
 
 new Vue({
   store,

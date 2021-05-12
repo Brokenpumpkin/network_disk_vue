@@ -135,10 +135,6 @@ export default {
                 link: this.$route.query.link
             };
             test.getDownLoad(params).then((res) => {
-                console.log(res);
-                console.log(res.headers);
-                console.log(res.headers.filename);
-                var filename = res.headers.filename;
                 saveAs(new Blob([res.data], {type:res.data.type}), res.headers.filename);
             });
         },

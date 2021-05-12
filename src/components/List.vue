@@ -2,21 +2,20 @@
   <div>
       <el-card class="box-card">
             <el-row :gutter="25">
-                <el-col :span="5">
-                    <div>
-                        <el-upload
-                            class="upload-demo"
-                            action="http://127.0.0.1:51002/cloud-file-service/upload/fileUpload"
-                            :headers="myHeaders"
-                            :data="{path: path}"
-                            :show-file-list="false"
-                            :before-upload="beforeUpload"
-                            :on-progress="handleProgress"
-                            :on-error="uploadError"
-                            :on-success="uploadSuccess">
-                            <el-button type="primary" icon="el-icon-upload2">点击上传</el-button>
-                        </el-upload>
-                    </div>
+                <el-col :span="5">                  
+                    <!-- <el-upload
+                        class="upload-demo"
+                        action="http://127.0.0.1:51002/cloud-file-service/upload/fileUpload"
+                        :headers="myHeaders"
+                        :data="{path: path}"
+                        :show-file-list="false"
+                        :before-upload="beforeUpload"
+                        :on-progress="handleProgress"
+                        :on-error="uploadError"
+                        :on-success="uploadSuccess">
+                        <el-button type="primary" icon="el-icon-upload2">点击上传</el-button>
+                    </el-upload> -->
+                    <el-button type="primary" icon="el-icon-upload" class="mr10" @click="uploadFiles()">文件上传</el-button>                  
                 </el-col>
 
                 <el-col :span="6">                           
@@ -210,10 +209,16 @@
             </span>
       </el-dialog>
 
+      <!--上传附件弹出框 -->
+        <el-dialog title="文件上传" center :visible.sync="uploadVisible" width="60%" @close="handlerClose">
+            <UploadBigFile class="uploadSlot"></UploadBigFile>
+        </el-dialog>
+
   </div>
 </template>
 
 <script>
+import UploadBigFile from './Upload';
 import ClipboardJS from 'clipboard';
 var clipboard = new ClipboardJS('.btn');
 
@@ -221,6 +226,9 @@ export default {
     created() {
         this.getBreadcrumb();
         this.getUserFileList();
+    },
+    components:{
+        UploadBigFile
     },
     data() {
         return {
@@ -232,6 +240,7 @@ export default {
             oldName: '',
             moveFileName: '',
             shareFileName: '',
+            uploadVisible: false,
             //点击分享显示的对话框
             shareDialogVisible: false,
             //在分享对话框中点击创建链接后显示的对话框
@@ -311,10 +320,29 @@ export default {
             this.fileList = newFileList;
             this.initLoading = false;
         },
-        download(downloadFileName) {
+        uploadFiles() {
+            this.uploadVisible = true;
+        },
+        // 关闭上传文件弹出框时触发
+        handlerClose(){
+            this.getUserFileList();
+        },
+        async download(downloadFileName) {
             const nowPath = window.sessionStorage.getItem("path");
+            
+            this.loadingOverLay = this.$loading({
+                lock: true,
+                text: '文件生成中',
+                spinner: 'el-icon-loading',
+                background: 'rgba(0,0,0,0.7)'
+                });
+            // var elemIF = document.createElement('iframe');
+            // elemIF.src = "http://127.0.0.1:51002"+'/cloud-file-service/download/download?path=' + nowPath + '&filename=' + downloadFileName;
+            // elemIF.style.display ='none';
+            // document.body.appendChild(elemIF);	 
+
             const test = {
-                getDownLoad: (params) => this.$http.get("cloud-file-service/download/fileDownload"
+                getDownLoad: (params) => this.$http.get("cloud-file-service/download/download"
                 , {params: params, responseType: "blob"})
             };
             const params = {
@@ -322,8 +350,9 @@ export default {
                 path: nowPath
             };
             test.getDownLoad(params).then((res) => {
-                saveAs(new Blob([res.data], {type:res.headers.type}), downloadFileName);
-            }); 
+                saveAs(new Blob([res.data], {type:res.data.type}), downloadFileName);
+            });  
+            this.loadingOverLay.close();
         },
         async intoDir(fileName) {
             const path = window.sessionStorage.getItem("path");
@@ -604,5 +633,8 @@ export default {
 }
 .file-size {
     cursor: default;
+}
+.uploadSlot {
+    margin: -10px 10px 10px 30px;
 }
 </style>
