@@ -26,6 +26,7 @@
 </template>
 
 <script>
+import Cookies from 'js-cookie'
 export default {
     data () {
         return {
@@ -58,6 +59,10 @@ export default {
                 window.sessionStorage.setItem('token', res.data.token_type + " " + res.data.access_token);
                 window.sessionStorage.setItem('username', this.loginForm.username);
                 window.sessionStorage.setItem('path', "/" + this.loginForm.username);
+                // localStorage.setItem("token", res.data.token_type + " " + res.data.access_token);
+                // localStorage.setItem('username', this.loginForm.username);
+                Cookies.set("token", res.data.token_type + " " + res.data.access_token); 
+                Cookies.set('username', this.loginForm.username);
                 this.$router.push('/home');
             });
         },

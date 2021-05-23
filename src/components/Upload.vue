@@ -51,11 +51,13 @@
                     checkChunkUploadedByResponse函数直接return true的话，不再调用上传接口
                     */
                     checkChunkUploadedByResponse: function (chunk, response_msg) {
+                        console.log(response_msg);
                         let objMessage = JSON.parse(response_msg);
-                        if (objMessage.skipUpload) {
+                        console.log(objMessage);
+                        if (objMessage.data.skipUpload) {
                             return true;
                         }
-                        return (objMessage.uploadedChunks || []).indexOf(chunk.offset + 1) >= 0;
+                        return (objMessage.data.uploadedChunks || []).indexOf(chunk.offset + 1) >= 0;
                     }      
                 },
                 attrs: {

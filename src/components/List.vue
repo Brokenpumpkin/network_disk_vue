@@ -171,7 +171,7 @@
       </el-dialog>
 
       <el-dialog
-            title="分享文件（夹）"
+            title="分享文件"
             :visible.sync="shareDialogVisible"
             width="30%">
             <span>有效期：</span>
@@ -190,7 +190,7 @@
       </el-dialog>
 
       <el-dialog
-            title="分享文件（夹）"
+            title="分享文件"
             :visible.sync="shareLinkDialogVisible"
             width="50%">
             <p>分享链接：</p>
@@ -203,7 +203,7 @@
                 <el-button @click="shareLinkDialogVisible=false">取 消</el-button>
                 <el-button 
                 class="btn"
-                :data-clipboard-text="'分享链接：' + this.shareFileUrl + this.shareLink + ' 提取码：'  + this.shareSercet">
+                :data-clipboard-text="'分享链接：' + this.shareFileUrl + '?link=' + this.shareLink + ' 提取码：'  + this.shareSercet">
                     一键复制链接及提取码
                 </el-button>
             </span>
@@ -232,7 +232,7 @@ export default {
     },
     data() {
         return {
-            shareFileUrl: 'http://127.0.0.1:8080/#/shareFileSecret/',
+            shareFileUrl: 'http://localhost:8080/#/shareFileSecret',
             //分享链接
             shareLink: '',
             //提取码
@@ -336,10 +336,6 @@ export default {
                 spinner: 'el-icon-loading',
                 background: 'rgba(0,0,0,0.7)'
                 });
-            // var elemIF = document.createElement('iframe');
-            // elemIF.src = "http://127.0.0.1:51002"+'/cloud-file-service/download/download?path=' + nowPath + '&filename=' + downloadFileName;
-            // elemIF.style.display ='none';
-            // document.body.appendChild(elemIF);	 
 
             const test = {
                 getDownLoad: (params) => this.$http.get("cloud-file-service/download/download"

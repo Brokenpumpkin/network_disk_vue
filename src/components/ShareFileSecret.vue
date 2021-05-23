@@ -77,6 +77,7 @@
 
 <script>
 import Header from './Header.vue'
+import Cookies from 'js-cookie'
 export default {
     created() {
         this.checkShareLink()
@@ -127,6 +128,12 @@ export default {
             this.$router.push('/home');
         },
         download() {
+            this.loadingOverLay = this.$loading({
+                lock: true,
+                text: '文件生成中',
+                spinner: 'el-icon-loading',
+                background: 'rgba(0,0,0,0.7)'
+            });
             const test = {
                 getDownLoad: (params) => this.$http.get("cloud-file-service/share/shareDownload"
                 , {params: params, responseType: "blob"})
@@ -134,9 +141,13 @@ export default {
             const params = {
                 link: this.$route.query.link
             };
+            
             test.getDownLoad(params).then((res) => {
-                saveAs(new Blob([res.data], {type:res.data.type}), res.headers.filename);
-            });
+                console.log(res); 
+                var fileName = decodeURI(res.headers.filename);
+                saveAs(new Blob([res.data], {type:res.data.type}), fileName);
+            }); 
+            this.loadingOverLay.close();
         },
         saveBtn() {
             this.fileSaveDialogVisible = true;           
@@ -146,7 +157,7 @@ export default {
             //发起添加到我的网盘请求
             const {data: res} = await this.$http.get('cloud-file-service/share/saveToDisk', {
                 params: {
-                    link: this.$route.params.link,
+                    link: this.$route.query.link,
                     path: node.path + "/" + node.name
                 }
             });
@@ -167,7 +178,7 @@ export default {
         async requestTree(resolve) {
             const {data: res} = await this.$http.get('cloud-file-service/file/getUserDirList',{
                 params: {
-                    path: window.sessionStorage.getItem('username')
+                    path: Cookies.get('username')
                 }
             });
             if (res.code !== 200) this.$message.error(res.message);

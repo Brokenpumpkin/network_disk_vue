@@ -10,13 +10,15 @@ import store from './store'
 import saveAs from 'file-saver';
 import clipboard from 'clipboard';
 import uploader from 'vue-simple-uploader';
+import Cookies from 'js-cookie';
 
 Vue.prototype.clipboard = clipboard;
 Vue.prototype.$http = axios
 axios.defaults.baseURL = 'http://127.0.0.1:51002'
 axios.interceptors.request.use(config => {
   console.log(config)
-  config.headers.Authorization = window.sessionStorage.getItem('token')
+  // config.headers.Authorization = window.sessionStorage.getItem('token')
+  config.headers.Authorization = Cookies.get('token')
   return config
 })
 
